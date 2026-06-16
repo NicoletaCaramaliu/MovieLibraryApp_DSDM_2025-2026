@@ -23,6 +23,7 @@ fun RegisterScreen(
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -37,8 +38,9 @@ fun RegisterScreen(
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = { email = it.trim() },
             label = { Text("Email") },
+            singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -48,6 +50,18 @@ fun RegisterScreen(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = { Text("Confirm Password") },
+            singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
         )
@@ -56,8 +70,39 @@ fun RegisterScreen(
 
         Button(
             onClick = {
-                if (email.isBlank() || password.isBlank()) {
+                if (email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
                     Toast.makeText(context, "Completează toate câmpurile", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                if (!email.contains("@") || !email.contains(".")) {
+                    Toast.makeText(context, "Email invalid", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                if (password.length < 8) {
+                    Toast.makeText(
+                        context,
+                        "Parola trebuie să aibă minim 8 caractere",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@Button
+                }
+
+                val hasLetter = password.any { it.isLetter() }
+                val hasDigit = password.any { it.isDigit() }
+
+                if (!hasLetter || !hasDigit) {
+                    Toast.makeText(
+                        context,
+                        "Parola trebuie să conțină litere și cifre",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@Button
+                }
+
+                if (password != confirmPassword) {
+                    Toast.makeText(context, "Parolele nu coincid", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
 
@@ -67,7 +112,12 @@ fun RegisterScreen(
                     if (existingUser != null) {
                         Toast.makeText(context, "User deja existent", Toast.LENGTH_SHORT).show()
                     } else {
-                        userDao.insertUser(UserEntity(email = email, password = password))
+                        userDao.insertUser(
+                            UserEntity(
+                                email = email,
+                                password = password
+                            )
+                        )
                         Toast.makeText(context, "Cont creat cu succes", Toast.LENGTH_SHORT).show()
                         onRegisterSuccess()
                     }

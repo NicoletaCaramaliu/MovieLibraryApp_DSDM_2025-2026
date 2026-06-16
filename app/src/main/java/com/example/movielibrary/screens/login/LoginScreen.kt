@@ -33,12 +33,17 @@ fun LoginScreen(
     ) {
         Text("Movie Library", style = MaterialTheme.typography.headlineMedium)
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text("Login to continue", style = MaterialTheme.typography.bodyMedium)
+
         Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = { email = it.trim() },
             label = { Text("Email") },
+            singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -48,6 +53,7 @@ fun LoginScreen(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
+            singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
         )
@@ -58,6 +64,11 @@ fun LoginScreen(
             onClick = {
                 if (email.isBlank() || password.isBlank()) {
                     Toast.makeText(context, "Completează toate câmpurile", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                if (!email.contains("@") || !email.contains(".")) {
+                    Toast.makeText(context, "Email invalid", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
 
@@ -77,8 +88,10 @@ fun LoginScreen(
             Text("Login")
         }
 
+        Spacer(modifier = Modifier.height(8.dp))
+
         TextButton(onClick = onRegisterClick) {
-            Text("Nu ai cont? Register")
+            Text("Nu ai cont? Creează unul")
         }
     }
 }
