@@ -1,7 +1,6 @@
 package com.example.movielibrary.screens.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,15 +13,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.movielibrary.data.local.database.DatabaseProvider
+import com.example.movielibrary.data.local.entity.MovieEntity
 import com.example.movielibrary.data.remote.api.RetrofitClient
-import com.example.movielibrary.data.remote.model.ShowDto
 import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen() {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
+    val movieDao = DatabaseProvider.getDatabase(context).movieDao()
 
-    var movies by remember { mutableStateOf<List<ShowDto>>(emptyList()) }
+    var movies by remember { mutableStateOf<List<MovieEntity>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -30,11 +32,33 @@ fun HomeScreen() {
         scope.launch {
             try {
                 isLoading = true
+
                 val response = RetrofitClient.api.searchMovies("batman")
-                movies = response.map { it.show }
+
+                val movieEntities = response.map { item ->
+                    MovieEntity(
+                        id = item.show.id,
+                        name = item.show.name,
+                        language = item.show.language,
+                        genres = item.show.genres?.joinToString(", "),
+                        runtime = item.show.runtime,
+                        rating = item.show.rating?.average,
+                        imageUrl = item.show.image?.medium,
+                        summary = item.show.summary
+                    )
+                }
+
+                movieDao.insertMovies(movieEntities)
+                movies = movieDao.getAllMovies()
                 errorMessage = null
+
             } catch (e: Exception) {
-                errorMessage = "Nu s-au putut încărca filmele. Verifică internetul."
+                movies = movieDao.getAllMovies()
+                errorMessage = if (movies.isEmpty()) {
+                    "Nu s-au putut încărca filmele. Verifică internetul."
+                } else {
+                    null
+                }
             } finally {
                 isLoading = false
             }
@@ -53,7 +77,7 @@ fun HomeScreen() {
         )
 
         Text(
-            text = "Popular Batman shows from TVMaze",
+            text = "Movies loaded from API and saved locally",
             style = MaterialTheme.typography.bodyMedium
         )
 
@@ -90,21 +114,17 @@ fun HomeScreen() {
 }
 
 @Composable
-fun MovieCard(movie: ShowDto) {
+fun MovieCard(movie: MovieEntity) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { },
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
+            modifier = Modifier.padding(12.dp)
         ) {
             AsyncImage(
-                model = movie.image?.medium,
+                model = movie.imageUrl,
                 contentDescription = movie.name,
                 modifier = Modifier
                     .size(width = 90.dp, height = 130.dp)
@@ -114,25 +134,19 @@ fun MovieCard(movie: ShowDto) {
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = movie.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
-
                 Text("Language: ${movie.language ?: "Unknown"}")
-                Text("Rating: ${movie.rating?.average ?: "N/A"}")
+                Text("Rating: ${movie.rating ?: "N/A"}")
                 Text("Runtime: ${movie.runtime ?: 0} min")
 
-                Spacer(modifier = Modifier.height(4.dp))
-
                 Text(
-                    text = "Genres: ${movie.genres?.joinToString(", ") ?: "N/A"}",
+                    text = "Genres: ${movie.genres ?: "N/A"}",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
