@@ -1,6 +1,7 @@
 package com.example.movielibrary.screens.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -19,21 +21,25 @@ import com.example.movielibrary.data.remote.api.RetrofitClient
 import kotlinx.coroutines.launch
 
 @Composable
-fun HomeScreen() {
-    val context = androidx.compose.ui.platform.LocalContext.current
+fun HomeScreen(
+    onMovieClick: (Int) -> Unit
+) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val movieDao = DatabaseProvider.getDatabase(context).movieDao()
 
+    var searchQuery by remember { mutableStateOf("batman") }
     var movies by remember { mutableStateOf<List<MovieEntity>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
+    fun loadMovies(query: String) {
         scope.launch {
             try {
                 isLoading = true
+                errorMessage = null
 
-                val response = RetrofitClient.api.searchMovies("batman")
+                val response = RetrofitClient.api.searchMovies(query)
 
                 val movieEntities = response.map { item ->
                     MovieEntity(
@@ -49,13 +55,12 @@ fun HomeScreen() {
                 }
 
                 movieDao.insertMovies(movieEntities)
-                movies = movieDao.getAllMovies()
-                errorMessage = null
+                movies = movieEntities
 
             } catch (e: Exception) {
                 movies = movieDao.getAllMovies()
                 errorMessage = if (movies.isEmpty()) {
-                    "Nu s-au putut încărca filmele. Verifică internetul."
+                    "Could not load movies. Check internet connection."
                 } else {
                     null
                 }
@@ -63,6 +68,10 @@ fun HomeScreen() {
                 isLoading = false
             }
         }
+    }
+
+    LaunchedEffect(Unit) {
+        loadMovies(searchQuery)
     }
 
     Column(
@@ -77,9 +86,32 @@ fun HomeScreen() {
         )
 
         Text(
-            text = "Movies loaded from API and saved locally",
+            text = "Search movies, save them locally and open details",
             style = MaterialTheme.typography.bodyMedium
         )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search movies") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = {
+                if (searchQuery.isNotBlank()) {
+                    loadMovies(searchQuery.trim())
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Search")
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -95,17 +127,24 @@ fun HomeScreen() {
 
             errorMessage != null -> {
                 Text(
-                    text = errorMessage ?: "Eroare necunoscută",
+                    text = errorMessage ?: "Unknown error",
                     color = MaterialTheme.colorScheme.error
                 )
             }
 
             else -> {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 32.dp)
                 ) {
                     items(movies) { movie ->
-                        MovieCard(movie = movie)
+                        MovieCard(
+                            movie = movie,
+                            onClick = {
+                                onMovieClick(movie.id)
+                            }
+                        )
                     }
                 }
             }
@@ -114,9 +153,14 @@ fun HomeScreen() {
 }
 
 @Composable
-fun MovieCard(movie: MovieEntity) {
+fun MovieCard(
+    movie: MovieEntity,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
