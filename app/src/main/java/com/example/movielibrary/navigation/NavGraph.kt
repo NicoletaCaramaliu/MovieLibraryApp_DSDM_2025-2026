@@ -10,6 +10,7 @@ import com.example.movielibrary.screens.details.DetailsScreen
 import com.example.movielibrary.screens.home.HomeScreen
 import com.example.movielibrary.screens.login.LoginScreen
 import com.example.movielibrary.screens.register.RegisterScreen
+import com.example.movielibrary.screens.welcome.WelcomeScreen
 
 @Composable
 fun NavGraph() {
@@ -22,7 +23,7 @@ fun NavGraph() {
         composable(Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
-                    navController.navigate(Screen.Home.route) {
+                    navController.navigate(Screen.Welcome.route) {
                         popUpTo(Screen.Login.route) {
                             inclusive = true
                         }
@@ -42,8 +43,31 @@ fun NavGraph() {
             )
         }
 
-        composable(Screen.Home.route) {
+        composable(Screen.Welcome.route) {
+            WelcomeScreen(
+                onStartClick = {
+                    navController.navigate(Screen.Home.createRoute())
+                },
+                onPopularSearchClick = { query ->
+                    navController.navigate(Screen.Home.createRoute(query))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.Home.route,
+            arguments = listOf(
+                navArgument("query") {
+                    type = NavType.StringType
+                    defaultValue = "batman"
+                }
+            )
+        ) { backStackEntry ->
+
+            val query = backStackEntry.arguments?.getString("query") ?: "batman"
+
             HomeScreen(
+                initialSearchQuery = query,
                 onMovieClick = { movieId ->
                     navController.navigate(Screen.Details.createRoute(movieId))
                 }
@@ -58,6 +82,7 @@ fun NavGraph() {
                 }
             )
         ) { backStackEntry ->
+
             val movieId = backStackEntry.arguments?.getInt("movieId") ?: 0
 
             DetailsScreen(
