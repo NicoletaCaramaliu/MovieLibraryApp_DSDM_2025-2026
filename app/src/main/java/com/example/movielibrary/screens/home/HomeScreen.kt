@@ -22,13 +22,14 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
+    initialSearchQuery: String = "off campus",
     onMovieClick: (Int) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val movieDao = DatabaseProvider.getDatabase(context).movieDao()
 
-    var searchQuery by remember { mutableStateOf("batman") }
+    var searchQuery by remember { mutableStateOf(initialSearchQuery) }
     var movies by remember { mutableStateOf<List<MovieEntity>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -70,8 +71,8 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        loadMovies(searchQuery)
+    LaunchedEffect(initialSearchQuery) {
+        loadMovies(initialSearchQuery)
     }
 
     Column(
