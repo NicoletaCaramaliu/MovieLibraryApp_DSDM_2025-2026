@@ -5,6 +5,8 @@ import com.example.movielibrary.data.remote.model.ShowDto
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
+import com.example.movielibrary.data.remote.model.CastResponse
+import com.example.movielibrary.data.remote.model.SeasonDto
 
 interface ApiService {
 
@@ -17,4 +19,14 @@ interface ApiService {
     suspend fun getMovieDetails(
         @Path("id") id: Int
     ): ShowDto
+
+    @GET("shows/{id}/cast")
+    suspend fun getMovieCast(
+        @Path("id") id: Int
+    ): List<CastResponse>
+
+    @GET("shows/{id}/seasons")
+    suspend fun getMovieSeasons(
+        @Path("id") id: Int
+    ): List<SeasonDto>
 }
