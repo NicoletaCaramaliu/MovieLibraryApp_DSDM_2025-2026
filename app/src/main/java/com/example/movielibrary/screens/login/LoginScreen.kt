@@ -63,12 +63,12 @@ fun LoginScreen(
         Button(
             onClick = {
                 if (email.isBlank() || password.isBlank()) {
-                    Toast.makeText(context, "Completează toate câmpurile", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
 
                 if (!email.contains("@") || !email.contains(".")) {
-                    Toast.makeText(context, "Email invalid", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Invalid email address", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
 
@@ -79,7 +79,7 @@ fun LoginScreen(
                         Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
                         onLoginSuccess()
                     } else {
-                        Toast.makeText(context, "Email sau parolă greșită", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Incorrect email or password", Toast.LENGTH_SHORT).show()
                     }
                 }
             },
@@ -91,7 +91,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         TextButton(onClick = onRegisterClick) {
-            Text("Nu ai cont? Creează unul")
+            Text("Don't have an account? Create one")
         }
     }
 }
