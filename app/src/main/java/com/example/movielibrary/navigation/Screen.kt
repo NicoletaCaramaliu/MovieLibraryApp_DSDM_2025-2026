@@ -6,7 +6,13 @@ sealed class Screen(val route: String) {
 
     object Register : Screen("register")
 
-    object Home : Screen("home")
+    object Welcome : Screen("welcome")
+
+    object Home : Screen("home?query={query}") {
+        fun createRoute(query: String = "off campus"): String {
+            return "home?query=${android.net.Uri.encode(query)}"
+        }
+    }
 
     object Details : Screen("details/{movieId}") {
         fun createRoute(movieId: Int): String {
