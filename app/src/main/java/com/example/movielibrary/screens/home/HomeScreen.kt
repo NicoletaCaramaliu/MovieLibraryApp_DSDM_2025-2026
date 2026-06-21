@@ -26,6 +26,8 @@ import coil.compose.AsyncImage
 import com.example.movielibrary.data.local.database.DatabaseProvider
 import com.example.movielibrary.data.local.entity.MovieEntity
 import com.example.movielibrary.data.remote.api.RetrofitClient
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,23 +55,31 @@ fun HomeScreen(
                 if (showOnlyFavorites) {
                     movies = movieDao.getFavoriteMovies()
                 } else {
-                    val response = RetrofitClient.api.searchMovies(query)
+                    val searchResponse = RetrofitClient.api.searchMovies(query)
 
-                    val movieEntities = response.map { item ->
-                        val existingMovie = movieDao.getMovieById(item.show.id)
-                        MovieEntity(
-                            id = item.show.id,
-                            name = item.show.name,
-                            language = item.show.language,
-                            genres = item.show.genres?.joinToString(", "),
-                            runtime = item.show.runtime ?: item.show.averageRuntime,
-                            rating = item.show.rating?.average,
-                            imageUrl = item.show.image?.medium,
-                            summary = item.show.summary,
-                            isFavorite = existingMovie?.isFavorite ?: false,
-                            totalEpisodes = item.show._embedded?.seasons?.sumOf { it.episodeOrder ?: 0 }
-                        )
-                    }
+                    val movieEntities = searchResponse.map { item ->
+                        scope.async {
+                            val seasons = try {
+                                RetrofitClient.api.getMovieSeasons(item.show.id)
+                            } catch (e: Exception) {
+                                emptyList()
+                            }
+                            
+                            val existingMovie = movieDao.getMovieById(item.show.id)
+                            MovieEntity(
+                                id = item.show.id,
+                                name = item.show.name,
+                                language = item.show.language,
+                                genres = item.show.genres?.joinToString(", "),
+                                runtime = item.show.runtime ?: item.show.averageRuntime,
+                                rating = item.show.rating?.average,
+                                imageUrl = item.show.image?.medium,
+                                summary = item.show.summary,
+                                isFavorite = existingMovie?.isFavorite ?: false,
+                                totalEpisodes = seasons.sumOf { it.episodeOrder ?: 0 }
+                            )
+                        }
+                    }.awaitAll()
 
                     movieDao.insertMovies(movieEntities)
                     movies = movieEntities

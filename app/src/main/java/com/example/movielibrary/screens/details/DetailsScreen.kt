@@ -334,7 +334,7 @@ fun SeasonCard(season: SeasonDto) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Season ${season.number ?: "-"}",
                     style = MaterialTheme.typography.titleMedium,
