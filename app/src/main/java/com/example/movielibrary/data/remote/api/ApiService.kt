@@ -10,7 +10,7 @@ import com.example.movielibrary.data.remote.model.SeasonDto
 
 interface ApiService {
 
-    @GET("search/shows")
+    @GET("search/shows?embed=seasons")
     suspend fun searchMovies(
         @Query("q") query: String = "batman"
     ): List<MovieSearchResponse>

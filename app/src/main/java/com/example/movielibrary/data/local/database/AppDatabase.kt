@@ -12,7 +12,7 @@ import com.example.movielibrary.data.local.entity.UserEntity
         UserEntity::class,
         MovieEntity::class
     ],
-    version = 3
+    version = 4
 )
 abstract class AppDatabase : RoomDatabase() {
 

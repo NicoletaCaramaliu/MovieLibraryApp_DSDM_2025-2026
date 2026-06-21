@@ -11,10 +11,16 @@ data class ShowDto(
     val language: String?,
     val genres: List<String>?,
     val runtime: Int?,
+    val averageRuntime: Int?,
     val premiered: String?,
     val summary: String?,
     val rating: RatingDto?,
-    val image: ImageDto?
+    val image: ImageDto?,
+    val _embedded: EmbeddedDto? = null
+)
+
+data class EmbeddedDto(
+    val seasons: List<SeasonDto>? = null
 )
 
 data class RatingDto(
