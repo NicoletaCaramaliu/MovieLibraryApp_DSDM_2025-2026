@@ -19,6 +19,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Alignment
 import com.example.movielibrary.data.remote.model.CastResponse
 import com.example.movielibrary.data.remote.model.SeasonDto
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import com.example.movielibrary.data.local.database.DatabaseProvider
+import com.example.movielibrary.data.local.entity.MovieEntity
+import kotlinx.coroutines.launch
 
 @Composable
 fun DetailsScreen(
@@ -30,18 +38,71 @@ fun DetailsScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var cast by remember { mutableStateOf<List<CastResponse>>(emptyList()) }
     var seasons by remember { mutableStateOf<List<SeasonDto>>(emptyList()) }
+    var isFavorite by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val movieDao = DatabaseProvider.getDatabase(context).movieDao()
 
     LaunchedEffect(movieId) {
         try {
             isLoading = true
+            
+            // Check local first for favorite status
+            val localMovie = movieDao.getMovieById(movieId)
+            isFavorite = localMovie?.isFavorite ?: false
+
             movie = RetrofitClient.api.getMovieDetails(movieId)
             cast = RetrofitClient.api.getMovieCast(movieId)
             seasons = RetrofitClient.api.getMovieSeasons(movieId)
+            
+            // If movie is successfully fetched from API, we might want to ensure it's in DB
+            // but for now let's just use what we have.
+            
             errorMessage = null
         } catch (e: Exception) {
-            errorMessage = "Could not load movie details."
+            // If API fails, try to load from local DB
+            val localMovie = movieDao.getMovieById(movieId)
+            if (localMovie != null) {
+                // Map localMovie to ShowDto if possible, but ShowDto is complex.
+                // For simplicity, if offline, we just show error if not in DB.
+                // Or we could have a better mapping.
+                // Given the current structure, let's keep it simple.
+                errorMessage = "Offline. Could not load latest details."
+            } else {
+                errorMessage = "Could not load movie details."
+            }
         } finally {
             isLoading = false
+        }
+    }
+
+    fun toggleFavorite() {
+        scope.launch {
+            val newFavoriteStatus = !isFavorite
+            isFavorite = newFavoriteStatus
+            
+            val currentMovie = movie
+            if (currentMovie != null) {
+                val existingInDb = movieDao.getMovieById(movieId)
+                if (existingInDb != null) {
+                    movieDao.updateFavoriteStatus(movieId, newFavoriteStatus)
+                } else {
+                    // If not in DB, insert it first
+                    val entity = MovieEntity(
+                        id = currentMovie.id,
+                        name = currentMovie.name,
+                        language = currentMovie.language,
+                        genres = currentMovie.genres?.joinToString(", "),
+                        runtime = currentMovie.runtime,
+                        rating = currentMovie.rating?.average,
+                        imageUrl = currentMovie.image?.medium,
+                        summary = currentMovie.summary,
+                        isFavorite = newFavoriteStatus
+                    )
+                    movieDao.insertMovies(listOf(entity))
+                }
+            }
         }
     }
 
@@ -50,8 +111,24 @@ fun DetailsScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Button(onClick = onBackClick) {
-            Text("Back")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(onClick = onBackClick) {
+                Text("Back")
+            }
+            
+            if (movie != null) {
+                IconButton(onClick = { toggleFavorite() }) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                        tint = if (isFavorite) Color.Red else Color.Gray
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(12.dp))

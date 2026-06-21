@@ -18,6 +18,10 @@ import coil.compose.AsyncImage
 import com.example.movielibrary.data.local.database.DatabaseProvider
 import com.example.movielibrary.data.local.entity.MovieEntity
 import com.example.movielibrary.data.remote.api.RetrofitClient
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.launch
 
 @Composable
@@ -33,6 +37,7 @@ fun HomeScreen(
     var movies by remember { mutableStateOf<List<MovieEntity>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showOnlyFavorites by remember { mutableStateOf(false) }
 
     fun loadMovies(query: String) {
         scope.launch {
@@ -40,26 +45,36 @@ fun HomeScreen(
                 isLoading = true
                 errorMessage = null
 
-                val response = RetrofitClient.api.searchMovies(query)
+                if (showOnlyFavorites) {
+                    movies = movieDao.getFavoriteMovies()
+                } else {
+                    val response = RetrofitClient.api.searchMovies(query)
 
-                val movieEntities = response.map { item ->
-                    MovieEntity(
-                        id = item.show.id,
-                        name = item.show.name,
-                        language = item.show.language,
-                        genres = item.show.genres?.joinToString(", "),
-                        runtime = item.show.runtime,
-                        rating = item.show.rating?.average,
-                        imageUrl = item.show.image?.medium,
-                        summary = item.show.summary
-                    )
+                    val movieEntities = response.map { item ->
+                        val existingMovie = movieDao.getMovieById(item.show.id)
+                        MovieEntity(
+                            id = item.show.id,
+                            name = item.show.name,
+                            language = item.show.language,
+                            genres = item.show.genres?.joinToString(", "),
+                            runtime = item.show.runtime,
+                            rating = item.show.rating?.average,
+                            imageUrl = item.show.image?.medium,
+                            summary = item.show.summary,
+                            isFavorite = existingMovie?.isFavorite ?: false
+                        )
+                    }
+
+                    movieDao.insertMovies(movieEntities)
+                    movies = movieEntities
                 }
 
-                movieDao.insertMovies(movieEntities)
-                movies = movieEntities
-
             } catch (e: Exception) {
-                movies = movieDao.getAllMovies()
+                movies = if (showOnlyFavorites) {
+                    movieDao.getFavoriteMovies()
+                } else {
+                    movieDao.getAllMovies()
+                }
                 errorMessage = if (movies.isEmpty()) {
                     "Could not load movies. Check internet connection."
                 } else {
@@ -71,8 +86,24 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(initialSearchQuery) {
-        loadMovies(initialSearchQuery)
+    fun toggleFavorite(movie: MovieEntity) {
+        scope.launch {
+            val newFavoriteStatus = !movie.isFavorite
+            movieDao.updateFavoriteStatus(movie.id, newFavoriteStatus)
+            
+            // Update local state to reflect changes immediately
+            movies = movies.map { 
+                if (it.id == movie.id) it.copy(isFavorite = newFavoriteStatus) else it 
+            }
+            
+            if (showOnlyFavorites && !newFavoriteStatus) {
+                movies = movies.filter { it.id != movie.id }
+            }
+        }
+    }
+
+    LaunchedEffect(initialSearchQuery, showOnlyFavorites) {
+        loadMovies(searchQuery)
     }
 
     Column(
@@ -114,6 +145,19 @@ fun HomeScreen(
             Text("Search")
         }
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Checkbox(
+                checked = showOnlyFavorites,
+                onCheckedChange = { showOnlyFavorites = it }
+            )
+            Text(text = "Show only favorites")
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         when {
@@ -144,6 +188,9 @@ fun HomeScreen(
                             movie = movie,
                             onClick = {
                                 onMovieClick(movie.id)
+                            },
+                            onFavoriteToggle = {
+                                toggleFavorite(movie)
                             }
                         )
                     }
@@ -156,7 +203,8 @@ fun HomeScreen(
 @Composable
 fun MovieCard(
     movie: MovieEntity,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onFavoriteToggle: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -166,7 +214,8 @@ fun MovieCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp)
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
                 model = movie.imageUrl,
@@ -193,6 +242,14 @@ fun MovieCard(
                 Text(
                     text = "Genres: ${movie.genres ?: "N/A"}",
                     style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            IconButton(onClick = onFavoriteToggle) {
+                Icon(
+                    imageVector = if (movie.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = if (movie.isFavorite) "Remove from favorites" else "Add to favorites",
+                    tint = if (movie.isFavorite) Color.Red else Color.Gray
                 )
             }
         }

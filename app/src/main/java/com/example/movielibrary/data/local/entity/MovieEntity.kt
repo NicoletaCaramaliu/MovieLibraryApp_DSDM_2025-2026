@@ -13,5 +13,6 @@ data class MovieEntity(
     val runtime: Int?,
     val rating: Double?,
     val imageUrl: String?,
-    val summary: String?
+    val summary: String?,
+    val isFavorite: Boolean = false
 )
