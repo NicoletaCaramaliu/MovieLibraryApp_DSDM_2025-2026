@@ -193,11 +193,21 @@ fun DetailsScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 
                                 val totalEpisodes = seasons.sumOf { it.episodeOrder ?: 0 }
-                                val runtimeText = "${currentMovie.runtime ?: currentMovie.averageRuntime ?: "?"} min"
-                                val episodesText = if (totalEpisodes > 0) " • $totalEpisodes episodes" else ""
+                                val episodeRuntime = currentMovie.runtime ?: currentMovie.averageRuntime ?: 0
+                                val totalDuration = totalEpisodes * episodeRuntime
+                                
+                                val durationText = if (totalEpisodes > 1 && totalDuration > 0) {
+                                    val hours = totalDuration / 60
+                                    val mins = totalDuration % 60
+                                    if (hours > 0) "${hours}h ${mins}m total" else "${mins}m total"
+                                } else {
+                                    "${episodeRuntime} min"
+                                }
+                                
+                                val episodesText = if (totalEpisodes > 1) " • $totalEpisodes episodes" else ""
                                 
                                 Text(
-                                    text = "$runtimeText$episodesText • ${currentMovie.premiered?.take(4) ?: "N/A"}",
+                                    text = "$durationText$episodesText • ${currentMovie.premiered?.take(4) ?: "N/A"}",
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
@@ -256,10 +266,9 @@ fun DetailsScreen(
 
                             Spacer(modifier = Modifier.height(24.dp))
 
-                            SectionTitle("Seasons")
-                            if (seasons.isEmpty()) {
-                                Text("No seasons available.")
-                            } else {
+                            val totalEpisodesCount = seasons.sumOf { it.episodeOrder ?: 0 }
+                            if (seasons.isNotEmpty() && totalEpisodesCount > 1) {
+                                SectionTitle("Seasons")
                                 seasons.forEach { season ->
                                     SeasonCard(season)
                                 }
