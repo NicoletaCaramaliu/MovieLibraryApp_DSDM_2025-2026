@@ -191,15 +191,13 @@ fun DetailsScreen(
                                 }
                                 
                                 Spacer(modifier = Modifier.width(8.dp))
-
+                                
                                 val totalEpisodes = seasons.sumOf { it.episodeOrder ?: 0 }
-                                val infoText = if (totalEpisodes > 0) {
-                                    "$totalEpisodes episodes"
-                                } else {
-                                    "${currentMovie.runtime ?: currentMovie.averageRuntime ?: "?"} min"
-                                }
+                                val runtimeText = "${currentMovie.runtime ?: currentMovie.averageRuntime ?: "?"} min"
+                                val episodesText = if (totalEpisodes > 0) " • $totalEpisodes episodes" else ""
+                                
                                 Text(
-                                    text = "$infoText • ${currentMovie.premiered?.take(4) ?: "N/A"}",
+                                    text = "$runtimeText$episodesText • ${currentMovie.premiered?.take(4) ?: "N/A"}",
                                     style = MaterialTheme.typography.labelLarge,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
@@ -330,7 +328,9 @@ fun SeasonCard(season: SeasonDto) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {

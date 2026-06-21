@@ -333,6 +333,7 @@ fun MovieCard(
                     } else {
                         "${movie.runtime ?: "?"} min"
                     }
+                    
                     Text(
                         text = "${movie.language ?: "English"} • $infoText",
                         style = MaterialTheme.typography.labelMedium,
